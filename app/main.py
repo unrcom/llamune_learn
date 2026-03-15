@@ -4,6 +4,7 @@ import httpx
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.routes import jobs, logs
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
 INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
@@ -110,6 +111,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(jobs.router)
+app.include_router(logs.router)
 
 
 @app.get("/health")
