@@ -26,6 +26,7 @@ class TrainingJob(Base):
     finished_at = Column(TIMESTAMP, nullable=True)
     error_message = Column(Text, nullable=True)
     output_model_name = Column(String(200), nullable=True)
+    instance_id = Column(String(100), nullable=True)
 
 
 class TrainingData(Base):
