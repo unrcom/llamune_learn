@@ -9,6 +9,7 @@ import os
 from app.db.database import get_db
 from app.models.base import TrainingJob, TrainingData
 from app.core.auth import get_current_user
+from app.core.trainer import run_training
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -23,6 +24,11 @@ class JobCreate(BaseModel):
     poc_id: int
     name: str
     log_ids: List[int]
+    iters: int = 1000
+    batch_size: int = 4
+    learning_rate: float = 1e-5
+    num_layers: int = 16
+    max_seq_length: int = 2048
 
 
 class JobResponse(BaseModel):
@@ -85,6 +91,11 @@ def _job_response(job: TrainingJob, db: Session) -> dict:
         "error_message": job.error_message,
         "output_model_name": job.output_model_name,
         "log_count": log_count,
+        "iters": job.iters,
+        "batch_size": job.batch_size,
+        "learning_rate": job.learning_rate,
+        "num_layers": job.num_layers,
+        "max_seq_length": job.max_seq_length,
     }
 
 
@@ -132,6 +143,11 @@ def create_job(
         status=1,
         created_by=current_user["id"],
         instance_id=INSTANCE_ID,
+        iters=job_in.iters,
+        batch_size=job_in.batch_size,
+        learning_rate=job_in.learning_rate,
+        num_layers=job_in.num_layers,
+        max_seq_length=job_in.max_seq_length,
     )
     db.add(job)
     db.flush()
@@ -142,6 +158,32 @@ def create_job(
 
     db.commit()
     db.refresh(job)
+    return _job_response(job, db)
+
+
+@router.post("/{job_id}/execute", status_code=status.HTTP_200_OK)
+def execute_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status == 2:
+        raise HTTPException(status_code=400, detail="既に実行中です")
+    if job.status == 3:
+        raise HTTPException(status_code=400, detail="既に完了しています")
+
+    training_data = db.query(TrainingData).filter(TrainingData.job_id == job_id).all()
+    if not training_data:
+        raise HTTPException(status_code=400, detail="訓練データが登録されていません")
+
+    db_url = os.getenv("DATABASE_URL")
+    run_training(job_id, db_url)
+
+    db.expire_all()
+    job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
     return _job_response(job, db)
 
 

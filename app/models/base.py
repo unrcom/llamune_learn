@@ -27,6 +27,11 @@ class TrainingJob(Base):
     error_message = Column(Text, nullable=True)
     output_model_name = Column(String(200), nullable=True)
     instance_id = Column(String(100), nullable=True)
+    iters = Column(Integer, nullable=False, default=1000)
+    batch_size = Column(Integer, nullable=False, default=4)
+    learning_rate = Column(Integer, nullable=False, default=1e-5)
+    num_layers = Column(Integer, nullable=False, default=16)
+    max_seq_length = Column(Integer, nullable=False, default=2048)
 
 
 class TrainingData(Base):
