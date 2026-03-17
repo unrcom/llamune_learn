@@ -76,6 +76,12 @@ def _run_mlx_lora(model_path: str, data_dir: Path, output_dir: Path, job: Traini
         "--save-every", str(10),
     ]
 
+    # 前回のアダプターがあれば引き継ぐ
+    adapter_file = output_dir / "adapters.safetensors"
+    if adapter_file.exists():
+        cmd += ["--resume-adapter-file", str(adapter_file)]
+
+
     last_loss = None
     with open(log_path, "a") as log_file:
         result = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT)
