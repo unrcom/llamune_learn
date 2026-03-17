@@ -25,10 +25,12 @@ class JobCreate(BaseModel):
     name: str
     log_ids: List[int]
     iters: int = 1000
-    batch_size: int = 4
+    batch_size: int = 1
     learning_rate: float = 1e-5
     num_layers: int = 16
     max_seq_length: int = 2048
+    training_mode: int = 1
+    loss_threshold: float = 0.1
 
 
 class JobResponse(BaseModel):
@@ -96,6 +98,8 @@ def _job_response(job: TrainingJob, db: Session) -> dict:
         "learning_rate": job.learning_rate,
         "num_layers": job.num_layers,
         "max_seq_length": job.max_seq_length,
+        "training_mode": job.training_mode,
+        "loss_threshold": job.loss_threshold,
     }
 
 
@@ -148,6 +152,8 @@ def create_job(
         learning_rate=job_in.learning_rate,
         num_layers=job_in.num_layers,
         max_seq_length=job_in.max_seq_length,
+        training_mode=job_in.training_mode,
+        loss_threshold=job_in.loss_threshold,
     )
     db.add(job)
     db.flush()

@@ -32,6 +32,8 @@ class TrainingJob(Base):
     learning_rate = Column(Integer, nullable=False, default=1e-5)
     num_layers = Column(Integer, nullable=False, default=16)
     max_seq_length = Column(Integer, nullable=False, default=2048)
+    training_mode = Column(Integer, nullable=False, default=1)
+    loss_threshold = Column(Integer, nullable=True)
 
 
 class TrainingData(Base):
