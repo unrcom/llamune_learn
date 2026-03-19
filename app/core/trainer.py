@@ -162,22 +162,23 @@ def run_training(job_id: int, db_url: str):
 
         if job.training_mode == 1:
             # バッチモード: 全件まとめて学習
-            _run_batch_mode(job, model_path, data_dir, output_dir, log_path)
+            _run_batch_mode(job, model_path, data_dir, output_dir, log_path, db)
         else:
             # 1件ずつモード
-            _run_sequential_mode(job, model_path, train_records, data_dir, output_dir, log_path)
+            _run_sequential_mode(job, model_path, train_records, data_dir, output_dir, log_path, db)
 
         # 訓練済みモデルをpublic.modelsに登録
         output_model_name = f"{model_path.split('/')[-1]}-job{job_id}"
         db.execute(
             text("""
-                INSERT INTO models (model_name, base_model, adapter_path, description, version)
-                VALUES (:model_name, :base_model, :adapter_path, :description, 1)
+                INSERT INTO models (model_name, base_model, adapter_path, parent_model_id, description, version)
+                VALUES (:model_name, :base_model, :adapter_path, :parent_model_id, :description, 1)
             """),
             {
                 "model_name": output_model_name,
                 "base_model": model_path,
                 "adapter_path": str(output_dir),
+                "parent_model_id": job.model_id,
                 "description": f"llamune_learn job_id={job_id} mode={job.training_mode} による訓練済みモデル",
             }
         )
@@ -200,7 +201,7 @@ def run_training(job_id: int, db_url: str):
         db.close()
 
 
-def _run_batch_mode(job: TrainingJob, model_path: str, data_dir: Path, output_dir: Path, log_path: Path):
+def _run_batch_mode(job: TrainingJob, model_path: str, data_dir: Path, output_dir: Path, log_path: Path, db):
     """バッチモード: 全件まとめて学習"""
     returncode, last_loss = _run_mlx_lora(model_path, data_dir, output_dir, job, log_path)
 
@@ -212,10 +213,18 @@ def _run_batch_mode(job: TrainingJob, model_path: str, data_dir: Path, output_di
         with open(log_path, "a") as f:
             f.write(f"\nWarning: 最終loss {last_loss} が閾値 {job.loss_threshold} を下回りませんでした\n")
 
+    # training_dataにfinal_loss・iterationsを記録
+    from app.models.base import TrainingData
+    training_data = db.query(TrainingData).filter(TrainingData.job_id == job.id).all()
+    for td in training_data:
+        td.final_loss = last_loss
+        td.iterations = job.iters
+    db.commit()
+
     _cleanup_checkpoints(output_dir)
 
 
-def _run_sequential_mode(job: TrainingJob, model_path: str, records: list[dict], data_dir: Path, output_dir: Path, log_path: Path):
+def _run_sequential_mode(job: TrainingJob, model_path: str, records: list[dict], data_dir: Path, output_dir: Path, log_path: Path, db):
     """1件ずつモード: 各件が閾値を下回るまでランダムに繰り返す"""
     pending = list(range(len(records)))  # 未完了のインデックス
     max_rounds = job.iters  # 最大ラウンド数
@@ -258,6 +267,16 @@ def _run_sequential_mode(job: TrainingJob, model_path: str, records: list[dict],
                 if last_loss < job.loss_threshold:
                     with open(log_path, "a") as f:
                         f.write(f"  ✅ log_id={rec['log_id']} loss={last_loss} < {job.loss_threshold} 完了\n")
+                    # training_dataに結果を記録
+                    from app.models.base import TrainingData
+                    td = db.query(TrainingData).filter(
+                        TrainingData.job_id == job.id,
+                        TrainingData.log_id == rec['log_id']
+                    ).first()
+                    if td:
+                        td.final_loss = last_loss
+                        td.iterations = round_num
+                        db.commit()
                 else:
                     next_pending.append(idx)
                     with open(log_path, "a") as f:
