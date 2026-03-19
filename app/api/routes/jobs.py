@@ -20,10 +20,14 @@ JOB_STATUS = {1: "draft", 2: "running", 3: "done", 4: "error"}
 
 # ---------- スキーマ ----------
 
+class TrainingDataIn(BaseModel):
+    log_id: int
+    role: int = 1  # 1=train 2=valid
+
 class JobCreate(BaseModel):
     poc_id: int
     name: str
-    log_ids: List[int]
+    training_data: List[TrainingDataIn]
     iters: int = 1000
     batch_size: int = 1
     learning_rate: float = 1e-5
@@ -135,8 +139,9 @@ def create_job(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if not job_in.log_ids:
-        raise HTTPException(status_code=400, detail="ログを1件以上選択してください")
+    train_data = [td for td in job_in.training_data if td.role == 1]
+    if not train_data:
+        raise HTTPException(status_code=400, detail="訓練データを1件以上選択してください")
 
     model_id = _resolve_model_id(job_in.poc_id, db)
 
@@ -158,8 +163,8 @@ def create_job(
     db.add(job)
     db.flush()
 
-    for log_id in job_in.log_ids:
-        td = TrainingData(job_id=job.id, log_id=log_id)
+    for td_in in job_in.training_data:
+        td = TrainingData(job_id=job.id, log_id=td_in.log_id, role=td_in.role)
         db.add(td)
 
     db.commit()

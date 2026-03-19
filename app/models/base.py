@@ -42,3 +42,4 @@ class TrainingData(Base):
     id = Column(Integer, primary_key=True)
     job_id = Column(Integer, ForeignKey("learn.training_jobs.id"), nullable=False)
     log_id = Column(Integer, nullable=False)
+    role = Column(SmallInteger, nullable=False, default=1)  # 1=train 2=valid

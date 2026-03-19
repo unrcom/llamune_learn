@@ -23,6 +23,7 @@ def _prepare_training_data(job: TrainingJob, db: Session) -> tuple[Path, list[di
     ).all()
 
     log_ids = [td.log_id for td in training_data]
+    role_map = {td.log_id: td.role for td in training_data}
 
     rows = db.execute(
         text("""
@@ -34,28 +35,36 @@ def _prepare_training_data(job: TrainingJob, db: Session) -> tuple[Path, list[di
         {"ids": log_ids}
     ).fetchall()
 
-    records = []
+    train_records = []
+    valid_records = []
     for row in rows:
         answer = row.expected_answer or row.answer
-        records.append({
+        rec = {
             "log_id": row.id,
             "question": row.question,
             "answer": answer,
-        })
+        }
+        if role_map.get(row.id) == 2:
+            valid_records.append(rec)
+        else:
+            train_records.append(rec)
 
-    # バッチモード用 train.jsonl（全件）
-    train_path = data_dir / "train.jsonl"
-    with open(train_path, "w", encoding="utf-8") as f:
-        for rec in records:
-            entry = {
-                "messages": [
-                    {"role": "user", "content": rec["question"]},
-                    {"role": "assistant", "content": rec["answer"]},
-                ]
-            }
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    def write_jsonl(path: Path, records: list[dict]):
+        with open(path, "w", encoding="utf-8") as f:
+            for rec in records:
+                entry = {
+                    "messages": [
+                        {"role": "user", "content": rec["question"]},
+                        {"role": "assistant", "content": rec["answer"]},
+                    ]
+                }
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    return data_dir, records
+    write_jsonl(data_dir / "train.jsonl", train_records)
+    if valid_records:
+        write_jsonl(data_dir / "valid.jsonl", valid_records)
+
+    return data_dir, train_records
 
 
 def _run_mlx_lora(model_path: str, data_dir: Path, output_dir: Path, job: TrainingJob, log_path: Path, iters: int = None) -> tuple[int, float | None]:
@@ -80,7 +89,6 @@ def _run_mlx_lora(model_path: str, data_dir: Path, output_dir: Path, job: Traini
     adapter_file = output_dir / "adapters.safetensors"
     if adapter_file.exists():
         cmd += ["--resume-adapter-file", str(adapter_file)]
-
 
     last_loss = None
     with open(log_path, "a") as log_file:
@@ -150,14 +158,14 @@ def run_training(job_id: int, db_url: str):
         output_dir.mkdir(parents=True, exist_ok=True)
         log_path = data_dir / "train.log"
 
-        data_dir, records = _prepare_training_data(job, db)
+        data_dir, train_records = _prepare_training_data(job, db)
 
         if job.training_mode == 1:
             # バッチモード: 全件まとめて学習
             _run_batch_mode(job, model_path, data_dir, output_dir, log_path)
         else:
             # 1件ずつモード
-            _run_sequential_mode(job, model_path, records, data_dir, output_dir, log_path)
+            _run_sequential_mode(job, model_path, train_records, data_dir, output_dir, log_path)
 
         # 訓練済みモデルをpublic.modelsに登録
         output_model_name = f"{model_path.split('/')[-1]}-job{job_id}"
@@ -199,7 +207,7 @@ def _run_batch_mode(job: TrainingJob, model_path: str, data_dir: Path, output_di
     if returncode != 0:
         raise Exception(f"訓練失敗 (exit code: {returncode})")
 
-    # loss閾値チェック: 閾値未満でなければ警告ログだけ記録
+    # loss閾値チェック
     if job.loss_threshold and last_loss and last_loss >= job.loss_threshold:
         with open(log_path, "a") as f:
             f.write(f"\nWarning: 最終loss {last_loss} が閾値 {job.loss_threshold} を下回りませんでした\n")
