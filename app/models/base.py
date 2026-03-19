@@ -43,3 +43,16 @@ class TrainingData(Base):
     job_id = Column(Integer, ForeignKey("learn.training_jobs.id"), nullable=False)
     log_id = Column(Integer, nullable=False)
     role = Column(SmallInteger, nullable=False, default=1)  # 1=train 2=valid
+    final_loss = Column(Integer, nullable=True)
+    iterations = Column(Integer, nullable=True)
+
+
+class ValidData(Base):
+    __tablename__ = "valid_data"
+    __table_args__ = {"schema": "learn"}
+    id = Column(Integer, primary_key=True)
+    log_id = Column(Integer, nullable=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    created_by = Column(Integer, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
