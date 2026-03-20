@@ -23,7 +23,7 @@ def get_pocs(
             m.model_name,
             m.adapter_path,
             COUNT(DISTINCT tj.id) AS job_count,
-            MAX(tj.executed_at) AS last_trained_at
+            MAX(tj.finished_at) AS last_trained_at
         FROM poc p
         LEFT JOIN models m ON p.model_id = m.id
         LEFT JOIN learn.training_jobs tj ON p.id = tj.poc_id AND tj.status = 3

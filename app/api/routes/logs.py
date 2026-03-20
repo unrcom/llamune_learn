@@ -56,7 +56,7 @@ def get_logs(
     dataset_join = "LEFT JOIN conversation_log_datasets cld ON cl.id = cld.log_id" if dataset_id else "LEFT JOIN conversation_log_datasets cld ON cl.id = cld.log_id"
 
     sql = text(f"""
-        SELECT
+        SELECT DISTINCT ON (cl.id)
             cl.id,
             cl.question,
             cl.answer,
@@ -70,7 +70,7 @@ def get_logs(
             td.final_loss,
             td.iterations,
             tj.name AS job_name,
-            tj.executed_at AS trained_at,
+            tj.finished_at AS trained_at,
             tj.training_mode,
             td.role AS training_data_role
         FROM conversation_logs cl
