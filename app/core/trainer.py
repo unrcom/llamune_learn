@@ -153,6 +153,10 @@ def run_training(job_id: int, db_url: str):
         job.started_at = datetime.now()
         db.commit()
 
+        # monkeyに訓練中を通知
+        from app.core.state import set_training, set_idle
+        set_training(job.name)
+
         data_dir = DATA_BASE_DIR / str(job_id)
         output_dir = MODEL_BASE_DIR / str(job_id)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -188,6 +192,9 @@ def run_training(job_id: int, db_url: str):
         job.output_model_name = output_model_name
         db.commit()
 
+        # monkeyに完了を通知
+        set_idle()
+
     except Exception as e:
         try:
             job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
@@ -195,6 +202,11 @@ def run_training(job_id: int, db_url: str):
                 job.status = 4
                 job.error_message = str(e)
                 db.commit()
+        except Exception:
+            pass
+        try:
+            from app.core.state import set_idle
+            set_idle()
         except Exception:
             pass
     finally:
