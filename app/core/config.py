@@ -29,17 +29,13 @@ def _resolve_instance(instance_id: str, self_url_override: str | None) -> dict:
     finally:
         conn.close()
 
-# 環境変数から取得
 _instance_id = os.getenv("INSTANCE_ID_ARG")
-_self_url_override = os.getenv("SELF_URL_ARG")
+if not _instance_id:
+    raise RuntimeError("INSTANCE_ID_ARG is required")
 
-if _instance_id:
-    _info = _resolve_instance(_instance_id, _self_url_override)
-    INSTANCE_ID   = _info["instance_id"]
-    DISPLAY_NAME  = _info["display_name"]
-    SELF_URL      = _info["self_url"]
-else:
-    # fallback: 従来の.env（移行期間中の互換性）
-    INSTANCE_ID   = os.getenv("INSTANCE_ID", "unnamed")
-    DISPLAY_NAME  = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
-    SELF_URL      = os.getenv("SELF_URL", "http://localhost:8100")
+_self_url_override = os.getenv("SELF_URL_ARG")
+_info = _resolve_instance(_instance_id, _self_url_override)
+
+INSTANCE_ID  = _info["instance_id"]
+DISPLAY_NAME = _info["display_name"]
+SELF_URL     = _info["self_url"]

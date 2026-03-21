@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import jobs, logs, pocs, models
 from app.core.config import INSTANCE_ID, DISPLAY_NAME, SELF_URL
+INSTANCE_TYPE = os.getenv("INSTANCE_TYPE", "learn")
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
@@ -42,7 +43,8 @@ async def _register(client: httpx.AsyncClient) -> bool:
             json={
                 "instance_id": INSTANCE_ID,
                 "url": SELF_URL,
-                "description": DISPLAY_NAME,
+                "display_name": DISPLAY_NAME,
+                "instance_type": INSTANCE_TYPE,
                 "allowed_apps": allowed_apps,
             },
             headers={"X-Internal-Token": INTERNAL_TOKEN},

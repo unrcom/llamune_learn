@@ -22,7 +22,6 @@ const STATUS_COLOR: Record<string, string> = {
 export function Layout({ children, onLogout }: Props) {
   const navigate = useNavigate()
   const { instances, connected } = useMonkeyStatus()
-  const learnInstances = instances.filter(i => i.instance_id.startsWith('llamune-learn'))
 
   function handleLogout() {
     clearTokens()
@@ -40,9 +39,9 @@ export function Layout({ children, onLogout }: Props) {
             >
               llamune <span className="text-muted-foreground font-normal text-sm">learn</span>
             </button>
-            {connected && learnInstances.length > 0 && (
+            {connected && instances.length > 0 && (
               <div className="flex items-center gap-1 overflow-x-auto">
-                {learnInstances.map(i => {
+                {instances.map(i => {
                   const statusColor = i.healthy
                     ? STATUS_COLOR[i.model_status] ?? 'bg-gray-100 text-gray-800'
                     : 'bg-red-100 text-red-800'
@@ -55,7 +54,7 @@ export function Layout({ children, onLogout }: Props) {
                       title={i.instance_id}
                       className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${statusColor}`}
                     >
-                      {i.instance_id.replace('llamune-learn-', 'l-')}: {statusLabel}
+                      {i.display_name}: {statusLabel}
                       {i.healthy && i.model_status === 'training' && i.current_model && ` [${i.current_model}]`}
                     </span>
                   )
