@@ -5,11 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import jobs, logs, pocs, models
+from app.core.config import INSTANCE_ID, DISPLAY_NAME, SELF_URL
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
-INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
-INSTANCE_DESCRIPTION = os.getenv("INSTANCE_DESCRIPTION", INSTANCE_ID)
-SELF_URL = os.getenv("SELF_URL", "http://localhost:8100")
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 HEARTBEAT_INTERVAL = int(os.getenv("HEARTBEAT_INTERVAL", "30"))
 
@@ -44,7 +42,7 @@ async def _register(client: httpx.AsyncClient) -> bool:
             json={
                 "instance_id": INSTANCE_ID,
                 "url": SELF_URL,
-                "description": INSTANCE_DESCRIPTION,
+                "description": DISPLAY_NAME,
                 "allowed_apps": allowed_apps,
             },
             headers={"X-Internal-Token": INTERNAL_TOKEN},
@@ -111,7 +109,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.include_router(jobs.router)
 app.include_router(logs.router)

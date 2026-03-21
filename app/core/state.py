@@ -1,8 +1,8 @@
 import os
 import httpx
+from app.core.config import INSTANCE_ID
 
 MONKEY_URL = os.getenv("MONKEY_URL", "")
-INSTANCE_ID = os.getenv("INSTANCE_ID", "unnamed")
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
 
@@ -11,7 +11,6 @@ def _patch_status(model_status: str, current_model: str | None = None):
     if not MONKEY_URL:
         return
     try:
-        import httpx
         with httpx.Client() as client:
             client.patch(
                 f"{MONKEY_URL}/api/registry/{INSTANCE_ID}",
