@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { clearTokens } from '@/api/client'
-import { useMonkeyStatus } from '@/hooks/useMonkeyStatus'
+import { useMonkey } from '@/contexts/MonkeyContext'
 
 interface Props {
   children: React.ReactNode
@@ -21,7 +21,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function Layout({ children, onLogout }: Props) {
   const navigate = useNavigate()
-  const { instances, connected } = useMonkeyStatus()
+  const { instances, connected } = useMonkey()
 
   function handleLogout() {
     clearTokens()

@@ -5,6 +5,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
 import os
+import threading
 
 from app.db.database import get_db
 from app.models.base import TrainingJob, TrainingData
@@ -172,7 +173,7 @@ def create_job(
     return _job_response(job, db)
 
 
-@router.post("/{job_id}/execute", status_code=status.HTTP_200_OK)
+@router.post("/{job_id}/execute", status_code=status.HTTP_202_ACCEPTED)
 def execute_job(
     job_id: int,
     db: Session = Depends(get_db),
@@ -191,11 +192,10 @@ def execute_job(
         raise HTTPException(status_code=400, detail="訓練データが登録されていません")
 
     db_url = os.getenv("DATABASE_URL")
-    run_training(job_id, db_url)
+    thread = threading.Thread(target=run_training, args=(job_id, db_url), daemon=True)
+    thread.start()
 
-    db.expire_all()
-    job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
-    return _job_response(job, db)
+    return {"message": "訓練を開始しました", "job_id": job_id}
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)

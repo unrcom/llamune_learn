@@ -7,6 +7,7 @@ import { JobCreatePage } from '@/pages/JobCreatePage'
 import { JobDetailPage } from '@/pages/JobDetailPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { getToken } from '@/api/client'
+import { MonkeyProvider } from '@/contexts/MonkeyContext'
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => !!getToken())
@@ -32,15 +33,17 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Layout onLogout={handleLogout}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/poc/:pocId/jobs" element={<JobsPage />} />
-          <Route path="/poc/:pocId/jobs/new" element={<JobCreatePage />} />
-          <Route path="/poc/:pocId/jobs/:jobId" element={<JobDetailPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
+      <MonkeyProvider>
+        <Layout onLogout={handleLogout}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/poc/:pocId/jobs" element={<JobsPage />} />
+            <Route path="/poc/:pocId/jobs/new" element={<JobCreatePage />} />
+            <Route path="/poc/:pocId/jobs/:jobId" element={<JobDetailPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      </MonkeyProvider>
     </BrowserRouter>
   )
 }

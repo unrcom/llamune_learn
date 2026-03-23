@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { jobsApi } from '@/api/client'
-import { useMonkeyStatus } from '@/hooks/useMonkeyStatus'
+import { useMonkey } from '@/contexts/MonkeyContext'
 import type { TrainingJob } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,8 +26,8 @@ export function JobDetailPage() {
   const numPocId = Number(pocId)
   const numJobId = Number(jobId)
 
-  const { instances } = useMonkeyStatus()
-  const learnInstance = instances.find(i => i.instance_id.startsWith('llamune-learn'))
+  const { instances } = useMonkey()
+  const learnInstance = instances.find(i => i.instance_type === 'learn')
 
   const { data: job, isError } = useQuery({
     queryKey: ['job', numJobId],
@@ -36,8 +36,8 @@ export function JobDetailPage() {
 
   const executeMutation = useMutation({
     mutationFn: () => jobsApi.executeJob(numJobId),
-    onSuccess: (updated) => {
-      qc.setQueryData(['job', numJobId], updated)
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job', numJobId] })
       qc.invalidateQueries({ queryKey: ['jobs', numPocId] })
     },
   })
